@@ -1,0 +1,6 @@
+{
+  "format_version": "1.20.0",
+  "minecraft:block": {
+    "description": { "identifier": "rubymod:ruby_block" }
+  }
+}

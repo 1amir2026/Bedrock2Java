@@ -17,6 +17,7 @@ jobs:
   # ---------------------------------------------------------------------
   test:
     name: Test (${{ matrix.os }})
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
@@ -50,6 +51,7 @@ jobs:
     name: Package source bundle
     needs: test
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - name: Zip source bundle
@@ -71,6 +73,7 @@ jobs:
   package-binaries:
     name: Package binary (${{ matrix.name }})
     needs: test
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
@@ -81,10 +84,7 @@ jobs:
           - os: ubuntu-latest
             name: linux-x64
             artifact: bedrock2java-linux-x64
-          - os: macos-13          # Intel runner
-            name: macos-x64
-            artifact: bedrock2java-macos-x64
-          - os: macos-latest      # Apple Silicon runner
+          - os: macos-latest      # Apple Silicon runner - fast queue, avoid macos-13 (Intel), which has a long shared-pool wait
             name: macos-arm64
             artifact: bedrock2java-macos-arm64
     runs-on: ${{ matrix.os }}
@@ -171,6 +171,7 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     needs: [package-source, package-binaries]
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: write
     steps:

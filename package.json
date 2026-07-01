@@ -1,6 +1,6 @@
 {
   "name": "bedrock2java-cli",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Interactive CLI that converts a Minecraft Bedrock Add-On (RP+BP) into a scaffolded Java (Fabric) mod project.",
   "bin": {
     "bedrock2java": "./bin/cli.js"

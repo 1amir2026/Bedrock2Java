@@ -11,6 +11,12 @@ on:
 env:
   NODE_VERSION: "22"
 
+# Cancel any older run for the same branch/PR when a new one starts, so a
+# stuck or slow job doesn't keep piling up queued runs behind it.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   # ---------------------------------------------------------------------
   # 1. Sanity check on all three OSes: syntax + a dry-run conversion
@@ -69,6 +75,14 @@ jobs:
   #    Application / SEA) - no Node install required to run these.
   #    These are UNSIGNED. See RELEASE_README.md for what that means
   #    on Windows/macOS and how to safely run them anyway.
+  #
+  #    IMPORTANT: always use "macos-latest" (currently Apple Silicon) here,
+  #    never a pinned label like "macos-13". GitHub has been shrinking the
+  #    older Intel macOS runner pools, and a job requesting a shrinking/
+  #    retired pool can sit in "Waiting for a runner to pick up this job..."
+  #    indefinitely instead of failing - which is exactly what breaks a
+  #    tag-triggered release. "macos-latest" always points at a
+  #    well-provisioned, fast-queue pool.
   # ---------------------------------------------------------------------
   package-binaries:
     name: Package binary (${{ matrix.name }})
@@ -84,7 +98,7 @@ jobs:
           - os: ubuntu-latest
             name: linux-x64
             artifact: bedrock2java-linux-x64
-          - os: macos-latest      # Apple Silicon runner - fast queue, avoid macos-13 (Intel), which has a long shared-pool wait
+          - os: macos-latest      # Apple Silicon runner - fast queue. Do NOT change to macos-13.
             name: macos-arm64
             artifact: bedrock2java-macos-arm64
     runs-on: ${{ matrix.os }}

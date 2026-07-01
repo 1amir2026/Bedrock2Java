@@ -1,5 +1,10 @@
 {
   "main": "bin/cli.js",
   "output": "sea-prep.blob",
-  "disableExperimentalSEAWarning": true
+  "disableExperimentalSEAWarning": true,
+  "assets": {
+    "gradle-wrapper.jar": "lib/resources/gradle-wrapper/gradle-wrapper.jar",
+    "gradlew": "lib/resources/gradle-wrapper/gradlew",
+    "gradlew.bat": "lib/resources/gradle-wrapper/gradlew.bat"
+  }
 }

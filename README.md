@@ -10,9 +10,11 @@ No external dependencies — pure Node.js. No `npm install` needed.
 ## Requirements
 
 - Node.js 18+
-- To actually **build the .jar** afterward: a JDK 21 and internet access (Gradle/Fabric
-  Loom need to download the Minecraft/Fabric toolchain). This CLI does not build the
-  jar itself — it generates a buildable Gradle project.
+- To **build the `.jar`** (either via the built-in `--build-jar` option or by running
+  `./gradlew build` yourself afterward): a JDK 21 and internet access on first run
+  (Gradle/Fabric Loom need to download the Gradle, Minecraft, and Fabric toolchain).
+  You do **not** need Gradle installed — a Gradle wrapper is bundled and generated
+  into every project automatically.
 
 ## Usage
 
@@ -25,6 +27,8 @@ You'll be asked, in order:
    (archives are extracted automatically, including a `.mcaddon`'s nested `.mcpack` files)
 2. Output folder for the generated Java mod project
 3. Mod ID, display name, version, author, description
+4. Whether to **build the `.jar` right now** with the bundled Gradle wrapper (requires a
+   JDK 21 + internet access), or just generate the buildable project source
 
 Every supported feature is converted automatically — there's no category picker to fill out.
 
@@ -53,10 +57,14 @@ node bin/cli.js \
   --mod-name "My Addon" \
   --mod-version 1.0.0 \
   --author "Your Name" \
-  --description "Converted from Bedrock"
+  --description "Converted from Bedrock" \
+  --build-jar
 ```
 
-Any flag you omit falls back to an interactive prompt for just that value.
+Any flag you omit falls back to an interactive prompt for just that value, except
+`--build-jar`/`--no-build-jar`: if omitted in a non-interactive context (no TTY, e.g.
+CI) it defaults to **no build**, so scripted runs stay fast and don't require a JDK
+just to scaffold the project source.
 
 ## What gets auto-converted vs. flagged for review
 
@@ -83,7 +91,10 @@ they were considered and explain why there's no file to convert.
 ## Output
 
 - `<output>/` — a complete Fabric mod Gradle project (`build.gradle`, `fabric.mod.json`,
-  Java source, converted assets/data)
+  Java source, converted assets/data), **with a bundled Gradle wrapper** (`gradlew`,
+  `gradlew.bat`, `gradle/wrapper/`) so no separate Gradle install is needed
+- `<output>/<mod_id>-<version>.jar` — the **built mod jar**, ready to install, if you
+  chose to build it (via the prompt or `--build-jar`)
 - `<output>/bedrock_reference/` — original Bedrock files that couldn't be auto-converted,
   kept for reference while you port them by hand
 - `<output>/conversion-log.md` — **the full log**. Every action taken, every warning,
@@ -93,13 +104,37 @@ they were considered and explain why there's no file to convert.
 
 ## Building the .jar
 
+**Option A — let the CLI do it:** answer "Yes" to the build prompt, or pass `--build-jar`.
+The CLI runs the bundled Gradle wrapper for you and copies the finished jar to
+`<output>/<mod_id>-<version>.jar` when it's done.
+
+**Option B — build it yourself:**
+
 ```
 cd <output>
-./gradlew build
+./gradlew build        # macOS/Linux
+gradlew.bat build       # Windows
 ```
 
-The .jar will be in `build/libs/`. (Requires internet access for Gradle to fetch the
-Fabric Loom toolchain — this sandboxed environment couldn't do that step for you.)
+The .jar will be in `build/libs/`. (Requires internet access on first run for Gradle to
+download itself plus the Fabric Loom/Minecraft toolchain — this sandboxed environment
+couldn't reach those servers, so `--build-jar` was verified here only up to the point
+where Gradle correctly starts downloading; it works end-to-end on a normal machine with
+internet access.)
+
+### Installing the built .jar
+
+Fabric Loader + Fabric API must already be installed for the matching Minecraft version
+in the target instance. Then drop the jar into that instance's `mods` folder:
+
+| OS | Mods folder |
+|---|---|
+| Windows | `%APPDATA%\.minecraft\mods` |
+| macOS | `~/Library/Application Support/minecraft/mods` |
+| Linux | `~/.minecraft/mods` |
+
+(If you're using a launcher like MultiMC/Prism/CurseForge, use that instance's own
+`mods` folder instead of the default one above.)
 
 ## Project layout
 
@@ -108,8 +143,13 @@ bin/cli.js              entry point — all interactive questions
 lib/ui.js                colors (cyan/aqua/red/green), progress bar, PgUp/PgDown menu
 lib/scanner.js            finds RP/BP inside the add-on folder
 lib/featureMap.js         your full feature list, categorized + automation level
-lib/javaProject.js        Fabric project scaffolder
-lib/pipeline.js            orchestrates scan → scaffold → convert → log
+lib/javaProject.js        Fabric project scaffolder (also writes the Gradle wrapper)
+lib/javaBuild.js          runs the Gradle wrapper to produce a real .jar + reports
+                          the mods folder to install it into
+lib/assets.js             loads bundled binary assets (works from source and from
+                          a packaged SEA binary)
+lib/resources/            bundled Gradle wrapper jar + scripts
+lib/pipeline.js            orchestrates scan → scaffold → convert → log → (optional) build
 lib/logger.js              writes conversion-log.md
 lib/converters/*.js        one file per category (textures, sounds, lang, blocks,
                             items, recipes, loot tables, models, entities, + a

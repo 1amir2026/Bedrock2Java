@@ -3,7 +3,7 @@
 This page covers: **how to download and run a release**, and **how to fix the
 warnings/errors people most commonly hit** — the Windows blue "protected your PC"
 screen, code-signing/antivirus warnings, and Java/Gradle errors when building the
-final `.jar`.
+final `.jar` (which the CLI can now do for you automatically).
 
 Every release publishes these files:
 
@@ -131,12 +131,16 @@ What to do:
 
 ## 5. Building the actual Java `.jar` (Java/Gradle errors)
 
-This CLI generates a **buildable Java Fabric mod project** — it does not compile
-the final `.jar` itself, because that requires a JDK and internet access to fetch
-the Minecraft/Fabric toolchain (something this CLI can't assume you want it to do
-automatically).
+This CLI generates a **buildable Java Fabric mod project** with a bundled Gradle
+wrapper — you don't need Gradle installed separately, just a JDK 21 and internet
+access on first run (to fetch the Minecraft/Fabric toolchain).
 
-After running the CLI, build the jar yourself:
+The CLI will ask **"Build the .jar now with Gradle?"** — say yes (or pass
+`--build-jar`) and it runs the build for you, then copies the finished jar to
+`<output>/<mod_id>-<version>.jar`, ready to drop into your `mods` folder.
+
+If you'd rather build it yourself (or the automatic build failed and you want to
+see the full Gradle output):
 
 ```
 cd <your output folder>
@@ -145,6 +149,17 @@ cd <your output folder>
 ```
 
 The `.jar` will appear in `build/libs/`.
+
+### Installing the .jar
+
+Fabric Loader + Fabric API must be installed for the matching Minecraft version in
+your target instance. Drop the built `.jar` into that instance's `mods` folder:
+
+| OS | Mods folder |
+|---|---|
+| Windows | `%APPDATA%\.minecraft\mods` |
+| macOS | `~/Library/Application Support/minecraft/mods` |
+| Linux | `~/.minecraft/mods` |
 
 ### Common errors and fixes
 

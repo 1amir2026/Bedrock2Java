@@ -169,8 +169,46 @@ async function main() {
   });
 }
 
-main().catch((e) => {
-  ui.err('Fatal error: ' + (e.stack || String(e)));
-  process.exit(1);
-});
+// When double-clicked from Windows Explorer, this exe owns its own console
+// window - if the process exits (success or failure) the window closes
+// immediately and any output is lost before it can be read. Detect that case
+// (no CI env var, stdin is a real interactive TTY) and pause for a keypress
+// before the process is allowed to end.
+function isLikelyDoubleClicked() {
+  return !process.env.CI && !!process.stdin.isTTY && !!process.stdout.isTTY;
+}
+
+function pauseBeforeExit() {
+  return new Promise((resolve) => {
+    if (!isLikelyDoubleClicked()) return resolve();
+    process.stdout.write('\nPress Enter to exit...');
+    process.stdin.setEncoding('utf8');
+    process.stdin.once('data', () => resolve());
+    process.stdin.resume();
+  });
+}
+
+main()
+  .then(() => pauseBeforeExit())
+  .catch(async (e) => {
+    const message = 'Fatal error: ' + (e && e.stack ? e.stack : String(e));
+    try {
+      ui.err(message);
+    } catch (uiErr) {
+      // ui itself may have failed to load (e.g. missing bundled module) -
+      // fall back to plain console output so the user still sees *something*.
+      console.error(message);
+    }
+    // Always leave a crash log next to the exe, in case the window still
+    // closes before the person can read the console (e.g. antivirus kill).
+    try {
+      const logPath = path.join(path.dirname(process.execPath), 'bedrock2java-crash.log');
+      fs.writeFileSync(logPath, `${new Date().toISOString()}\n${message}\n`, 'utf8');
+      console.error(`Details written to: ${logPath}`);
+    } catch (logErr) {
+      // best-effort only
+    }
+    await pauseBeforeExit();
+    process.exit(1);
+  });
 

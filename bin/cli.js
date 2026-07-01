@@ -9,6 +9,8 @@ const { isArchive } = require('../lib/zipExtract');
 
 function parseFlags(argv) {
   const flags = {};
+  if (argv.includes('--build-jar')) flags.buildJar = true;
+  if (argv.includes('--no-build-jar')) flags.buildJar = false;
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     const map = {
@@ -61,7 +63,7 @@ async function main() {
   ui.heading('Bedrock Add-On -> Java Mod Converter');
   console.log(ui.color.dim('Answers below: use Up/Down or PgUp/PgDown to move, Space to toggle, Enter to confirm.'));
   console.log(ui.color.dim('Every supported Bedrock feature is converted automatically - no feature selection needed.'));
-  console.log(ui.color.dim('(Non-interactive/CI use: pass --addon, --out, --mod-id, --mod-name, --mod-version, --author, --description)'));
+  console.log(ui.color.dim('(Non-interactive/CI use: pass --addon, --out, --mod-id, --mod-name, --mod-version, --author, --description, --build-jar / --no-build-jar)'));
 
   // 1. Bedrock add-on path (folder, or a .zip / .mcaddon / .mcpack archive)
   const addonPath = await resolve(flags.addon, {
@@ -122,6 +124,27 @@ async function main() {
     defaultValue: `${modName} - converted from a Minecraft Bedrock Add-On`
   });
 
+  // 4. Build the .jar now?
+  let buildJarNow;
+  if (flags.buildJar !== undefined) {
+    buildJarNow = flags.buildJar;
+    ui.ok(`Build .jar now: ${buildJarNow ? 'yes' : 'no'}`);
+  } else if (!process.stdout.isTTY) {
+    // Non-interactive/CI/scripted use: never auto-build unless explicitly
+    // requested with --build-jar, so scripted runs stay fast and don't
+    // require a JDK/internet just to scaffold the project source.
+    buildJarNow = false;
+  } else {
+    buildJarNow = await ui.selectPrompt({
+      question: 'Build the .jar now with Gradle? (requires a JDK 21 and internet access)',
+      options: [
+        { label: 'Yes - build the .jar now', value: true, hint: 'runs ./gradlew build for you' },
+        { label: 'No - just generate the project source', value: false, hint: 'you can run ./gradlew build yourself later' }
+      ],
+      defaultIndex: 0
+    });
+  }
+
   ui.heading('Starting Conversion');
   ui.closeTextPrompt();
   console.log(`${ui.color.aqua('Add-on path:')}      ${addonPath}`);
@@ -131,6 +154,7 @@ async function main() {
   console.log(`${ui.color.aqua('Version:')}          ${modVersion}`);
   console.log(`${ui.color.aqua('Author:')}           ${authorName}`);
   console.log(`${ui.color.aqua('Categories:')}       all (${CATEGORY_ORDER.length}) - every supported feature is converted automatically`);
+  console.log(`${ui.color.aqua('Build .jar now:')}   ${buildJarNow ? 'yes' : 'no'}`);
 
   await runConversion({
     addonPath,
@@ -140,7 +164,8 @@ async function main() {
     modVersion,
     authorName,
     description,
-    selectedCategories: CATEGORY_ORDER
+    selectedCategories: CATEGORY_ORDER,
+    buildJarNow
   });
 }
 

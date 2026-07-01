@@ -180,7 +180,18 @@ AI coding assistant to finish it.
 
 ---
 
-## 6. Reporting a problem
+## 6. Forking this repo: if your own Actions run hangs on "Waiting for a runner..."
+
+This usually means the workflow is targeting `macos-13` (an Intel Mac runner), which
+has a very long queue on GitHub's free shared pool and can appear to hang for a long
+time before a runner becomes available. The published workflow only builds macOS on
+`macos-latest` (Apple Silicon, which queues quickly) alongside `ubuntu-latest` and
+`windows-latest` — if you've customized `.github/workflows/build.yml` and added
+`macos-13` back in, remove it (or switch to a self-hosted/paid runner if you
+specifically need an Intel Mac build). Every job also has a `timeout-minutes` cap so a
+stuck runner queue fails that job instead of blocking the whole workflow indefinitely.
+
+## 7. Reporting a problem
 
 If something in this guide doesn't match what you're seeing, open an issue with:
 - Your OS and which release asset you downloaded

@@ -78,11 +78,31 @@ lands as working code versus a documented starting point:
 | Automatic (`[auto]`) | Scaffolded, needs finishing (`[partial]`) | Logged only, no Java equivalent (`[manual]`) |
 |---|---|---|
 | Textures (all categories) | Blocks/items with custom behavior components | Entity AI / behaviors / pathfinding |
-| Sounds (.ogg) + sounds.json | Entities (Java class + registration stub generated; AI must be hand-written) | Animation controllers, particles, screen effects |
+| Sounds: `.ogg` files **and** real Java `SoundEvent`s registered from `sound_definitions.json` (ModSounds.java) | Entities (Java class + attributes + placeholder renderer + spawn egg generated; AI/goals and the real 3D model must be hand-written) | Animation controllers, particles, screen effects |
 | Localization (.lang → .json) | Models/geometry (kept as reference; Bedrock's format isn't compatible with Java's) | Scripting API / JavaScript logic (rewrite in Java) |
-| Blocks & items (basic registration, models, blockstates, item models, lang) | Recipes needing non-trivial mapping (brewing, etc.) | Economy, survival mechanics, magic systems, UI/Forms, player abilities, and other design-layer gameplay systems |
+| Blocks & items - registration, models, blockstates, item models, lang, **plus a matching `BlockItem`/creative-tab entry so they're actually obtainable in-game** | Recipes needing non-trivial mapping (brewing, etc.) | Economy, survival mechanics, magic systems, UI/Forms, player abilities, and other design-layer gameplay systems |
 | Crafting/furnace/smithing/stonecutter recipes | World generation (structures/features/ores) | |
 | Loot tables & custom drops | Trade tables | |
+| Entity ambient/hurt/death sounds, and items name-matched to a custom sound event (e.g. a "disc" item), wired to real `SoundEvent`s and flagged `NEEDS_REVIEW` to confirm the trigger | | |
+| Entity default attributes (`FabricDefaultAttributeRegistry`) and spawn eggs, so spawnable mobs don't crash the client and can be obtained | | |
+
+### What was broken before and is fixed now
+
+Earlier builds of this tool converted blocks/items/entities/sounds as isolated files that
+never got wired together, so a converted `.jar` would compile but not actually behave like
+the Bedrock Add-On:
+- Blocks had no `BlockItem`, and nothing was ever added to a creative-mode tab - converted
+  blocks/items were unobtainable except via `/give`. **Fixed:** every block/item now goes
+  through a `register()` helper that creates the `BlockItem` (for blocks) and adds itself to
+  a generated `ModItemGroup` creative tab.
+- Custom mobs had no `FabricDefaultAttributeRegistry` call or `EntityRenderer` registration -
+  spawning one crashed the client. **Fixed:** attributes and a crash-safe placeholder renderer
+  are now generated and registered (via a new client entry point, `ModClient.java`) for every
+  entity; spawnable entities also get a spawn egg.
+- `.ogg` files were copied and a `sounds.json` was written, but no Java `SoundEvent` was ever
+  registered, so nothing could actually play a custom sound. **Fixed:** `sound_definitions.json`
+  is now parsed and every sound event becomes a real registered `SoundEvent` in `ModSounds.java`,
+  which entity ambient/hurt/death sounds and name-matched items (e.g. music discs) now reference.
 
 Every single item from your feature list is represented in `lib/featureMap.js` and
 is always converted — categories marked `[manual]` exist mainly to **document** that
